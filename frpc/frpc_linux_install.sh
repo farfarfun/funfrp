@@ -77,19 +77,14 @@ FILE_NAME=frp_${FRP_VERSION}_linux_${PLATFORM}
 
 # download
 if [ $GOOGLE_HTTP_CODE == "200" ]; then
-    wget -P ${WORK_PATH} https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz -O ${FILE_NAME}.tar.gz
+    git clone https://github.com/fatedier/frp.git
 else
-    if [ $PROXY_HTTP_CODE == "200" ]; then
-        wget -P ${WORK_PATH} ${PROXY_URL}https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz -O ${FILE_NAME}.tar.gz
-    else
-        echo -e "${Red}检测 GitHub Proxy 代理失效 开始使用官方地址下载${Font}"
-        wget -P ${WORK_PATH} https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz -O ${FILE_NAME}.tar.gz
-    fi
+    git clone https://gitee.com/farfarfun/frp.git
 fi
-tar -zxvf ${FILE_NAME}.tar.gz
+
 
 mkdir -p ${FRP_PATH}
-mv ${FILE_NAME}/${FRP_NAME} ${FRP_PATH}
+mv ${FRP_NAME} ${FRP_PATH}
 
 # configure frpc.toml
 RADOM_NAME=$(cat /dev/urandom | head -n 10 | md5sum | head -c 8)
