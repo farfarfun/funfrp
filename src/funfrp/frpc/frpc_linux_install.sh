@@ -81,12 +81,7 @@ fi
 FILE_NAME=frp_${FRP_VERSION}_linux_${PLATFORM}
 
 # download
-if [ $GOOGLE_HTTP_CODE == "200" ]; then
-    git clone https://github.com/fatedier/frp.git
-else
-    git clone https://gitee.com/farfarfun/frp.git
-fi
-
+mv ../../../releases/0.61.2/${FRP_NAME} ${FRP_NAME}
 
 mkdir -p ${FRP_PATH}
 mv ${FRP_NAME} ${FRP_PATH}
