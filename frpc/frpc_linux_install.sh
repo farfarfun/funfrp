@@ -18,6 +18,11 @@ FRP_VERSION=0.61.2
 FRP_PATH=/usr/local/frp
 PROXY_URL="https://ghp.ci/"
 
+rm -rf /usr/local/frp/${FRP_NAME}
+rm -rf /usr/local/frp/${FRP_NAME}.toml
+rm -rf /lib/systemd/system/${FRP_NAME}.service${Font}
+
+
 # check frpc
 if [ -f "/usr/local/frp/${FRP_NAME}" ] || [ -f "/usr/local/frp/${FRP_NAME}.toml" ] || [ -f "/lib/systemd/system/${FRP_NAME}.service" ];then
     echo -e "${Green}=========================================================================${Font}"
