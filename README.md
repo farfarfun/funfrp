@@ -10,15 +10,30 @@
 
 ```
 script/
-├── frpc/          # frp 客户端
+├── frp_manager.sh    # 一键管理脚本：选择 frpc/frps → 安装(覆盖配置)/更新/卸载，按机器架构自动下载
+├── frpc/             # frp 客户端
 │   ├── frpc_linux_install.sh
 │   ├── frpc_linux_uninstall.sh
 │   ├── frpc_synology_install.sh
 │   └── frpc_synology_uninstall.sh
-└── frps/          # frp 服务端
+└── frps/             # frp 服务端
     ├── frps_linux_install.sh
     └── frps_linux_uninstall.sh
 ```
+
+## 一键管理脚本 (推荐)
+
+运行后按提示选择 **组件**（frpc / frps）和 **操作**（安装/更新/卸载），脚本会按当前机器架构自动下载对应版本。
+
+```shell
+wget https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frp_manager.sh -O frp_manager.sh && chmod +x frp_manager.sh && ./frp_manager.sh
+# 国内镜像
+wget https://ghfast.top/https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frp_manager.sh -O frp_manager.sh && chmod +x frp_manager.sh && ./frp_manager.sh
+```
+
+- **安装 (覆盖配置)**：安装并写入默认配置，若已有配置会被覆盖。
+- **更新**：仅替换程序文件，不修改现有 toml 配置。
+- **卸载**：停止服务并删除该组件相关文件（若 `/usr/local/frp` 仅剩当前组件则删除目录）。
 
 ## 更新
 
