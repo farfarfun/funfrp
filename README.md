@@ -114,7 +114,7 @@ docker restart frpc
 安装
 
 ```shell
-wget https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_install.sh -O frps_linux_install.sh && chmod +x frps_linux_install.sh && ./frps_linux_install.sh
+wget https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_install.sh -O frps_linux_install.sh && chmod +x frps_linux_install.sh &&sudo ./frps_linux_install.sh
 # 国内镜像
 wget https://ghfast.top/https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_install.sh -O frps_linux_install.sh && chmod +x frps_linux_install.sh && ./frps_linux_install.sh
 ```
@@ -132,7 +132,7 @@ sudo systemctl restart frps
 卸载
 
 ```shell
-wget https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_uninstall.sh -O frps_linux_uninstall.sh && chmod +x frps_linux_uninstall.sh && ./frps_linux_uninstall.sh
+wget https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_uninstall.sh -O frps_linux_uninstall.sh && chmod +x frps_linux_uninstall.sh && sudo ./frps_linux_uninstall.sh
 # 国内镜像
 wget https://ghfast.top/https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_uninstall.sh -O frps_linux_uninstall.sh && chmod +x frps_linux_uninstall.sh && ./frps_linux_uninstall.sh
 ```

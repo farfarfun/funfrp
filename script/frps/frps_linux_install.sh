@@ -102,6 +102,13 @@ auth.token = "${RADOM_TOKEN}"
 # vhostHTTPPort = 80
 # vhostHTTPSPort = 443
 
+# 默认为 127.0.0.1，如果需要公网访问，需要修改为 0.0.0.0。
+webServer.addr = "0.0.0.0"
+webServer.port = 7500
+# dashboard 用户名密码，可选，默认为空
+webServer.user = "admin"
+webServer.password = "admin"
+
 EOF
 
 # configure systemd
