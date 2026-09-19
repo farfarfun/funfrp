@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
+set -euo pipefail
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
 # fonts color
-Green="\033[32m"
-Red="\033[31m"
-Yellow="\033[33m"
-GreenBG="\033[42;37m"
-RedBG="\033[41;37m"
-Font="\033[0m"
+GREEN="\033[32m"
+RED="\033[31m"
+YELLOW="\033[33m"
+GREEN_BG="\033[42;37m"
+RED_BG="\033[41;37m"
+FONT="\033[0m"
 # fonts color
 
 # variable
-WORK_PATH=$(dirname $(readlink -f $0))
+WORK_PATH=$(dirname "$(readlink -f "$0")")
 FRP_NAME=frpc
 FRP_VERSION=0.67.0
 FRP_PATH=/usr/local/frp
@@ -20,99 +21,100 @@ PROXY_URL="https://ghfast.top/"
 
 # check frpc 已安装则退出（仅以二进制为准；.toml 已存在时后面不会覆盖）
 if [ -f "/usr/local/frp/${FRP_NAME}" ]; then
-    echo -e "${Green}=========================================================================${Font}"
-    echo -e "${RedBG}当前已退出脚本.${Font}"
-    echo -e "${Green}检查到服务器已安装${Font} ${Red}${FRP_NAME}${Font}"
-    echo -e "${Green}请先执行卸载脚本或手动删除${Font} ${Red}/usr/local/frp/${FRP_NAME}${Font} ${Green}后再次执行本脚本.${Font}"
-    echo -e "${Green}=========================================================================${Font}"
+    echo -e "${GREEN}=========================================================================${FONT}"
+    echo -e "${RED_BG}当前已退出脚本.${FONT}"
+    echo -e "${GREEN}检查到服务器已安装${FONT} ${RED}${FRP_NAME}${FONT}"
+    echo -e "${GREEN}请先执行卸载脚本或手动删除${FONT} ${RED}/usr/local/frp/${FRP_NAME}${FONT} ${GREEN}后再次执行本脚本.${FONT}"
+    echo -e "${GREEN}=========================================================================${FONT}"
     exit 0
 fi
 
-while ! test -z "$(ps -A | grep -w ${FRP_NAME})"; do
-    FRPCPID=$(ps -A | grep -w ${FRP_NAME} | awk 'NR==1 {print $1}')
-    kill -9 $FRPCPID
+# 只清理本脚本自己托管的 frpc 进程：按精确进程名匹配（pgrep -x），
+# 不用 `ps -A | grep` 做子串匹配，避免误杀命令行里恰好带 frpc 字样的无关进程。
+for pid in $(pgrep -x "${FRP_NAME}" 2>/dev/null || true); do
+    kill -9 "${pid}" 2>/dev/null || true
 done
 
 # check pkg
-if type apt-get >/dev/null 2>&1 ; then
-    if ! type wget >/dev/null 2>&1 ; then
+if type apt-get >/dev/null 2>&1; then
+    if ! type wget >/dev/null 2>&1; then
         apt-get install wget -y
     fi
-    if ! type curl >/dev/null 2>&1 ; then
+    if ! type curl >/dev/null 2>&1; then
         apt-get install curl -y
     fi
 fi
 
-if type yum >/dev/null 2>&1 ; then
-    if ! type wget >/dev/null 2>&1 ; then
+if type yum >/dev/null 2>&1; then
+    if ! type wget >/dev/null 2>&1; then
         yum install wget -y
     fi
-    if ! type curl >/dev/null 2>&1 ; then
+    if ! type curl >/dev/null 2>&1; then
         yum install curl -y
     fi
 fi
 
 # check network
-GOOGLE_HTTP_CODE=$(curl -o /dev/null --connect-timeout 5 --max-time 8 -s --head -w "%{http_code}" "https://www.google.com")
-PROXY_HTTP_CODE=$(curl -o /dev/null --connect-timeout 5 --max-time 8 -s --head -w "%{http_code}" "${PROXY_URL}")
+GOOGLE_HTTP_CODE=$(curl -o /dev/null --connect-timeout 5 --max-time 8 -s --head -w "%{http_code}" "https://www.google.com" || true)
+PROXY_HTTP_CODE=$(curl -o /dev/null --connect-timeout 5 --max-time 8 -s --head -w "%{http_code}" "${PROXY_URL}" || true)
 
 # check arch
-if [ $(uname -m) = "x86_64" ]; then
-    PLATFORM=amd64
-elif [ $(uname -m) = "aarch64" ]; then
-    PLATFORM=arm64
-elif [ $(uname -m) = "armv7" ]; then
-    PLATFORM=arm
-elif [ $(uname -m) = "armv7l" ]; then
-    PLATFORM=arm
-elif [ $(uname -m) = "armhf" ]; then
-    PLATFORM=arm
+PLATFORM=""
+case "$(uname -m)" in
+    x86_64) PLATFORM=amd64 ;;
+    aarch64) PLATFORM=arm64 ;;
+    armv7|armv7l|armhf) PLATFORM=arm ;;
+esac
+if [ -z "$PLATFORM" ]; then
+    echo -e "${RED}不支持的架构: $(uname -m)${FONT}"
+    exit 1
 fi
 
-FILE_NAME=frp_${FRP_VERSION}_linux_${PLATFORM}
+FILE_NAME="frp_${FRP_VERSION}_linux_${PLATFORM}"
 
 # download
-if [ $GOOGLE_HTTP_CODE == "200" ]; then
-    wget -P ${WORK_PATH} https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz -O ${FILE_NAME}.tar.gz
+if [ "$GOOGLE_HTTP_CODE" = "200" ]; then
+    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
+elif [ "$PROXY_HTTP_CODE" = "200" ]; then
+    wget -P "${WORK_PATH}" "${PROXY_URL}https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
 else
-    if [ $PROXY_HTTP_CODE == "200" ]; then
-        wget -P ${WORK_PATH} ${PROXY_URL}https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz -O ${FILE_NAME}.tar.gz
-    else
-        echo -e "${Red}检测 GitHub Proxy 代理失效 开始使用官方地址下载${Font}"
-        wget -P ${WORK_PATH} https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz -O ${FILE_NAME}.tar.gz
-    fi
+    echo -e "${RED}检测 GitHub Proxy 代理失效 开始使用官方地址下载${FONT}"
+    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
 fi
-tar -zxvf ${FILE_NAME}.tar.gz
+tar -zxvf "${FILE_NAME}.tar.gz"
 
-mkdir -p ${FRP_PATH}
-mv ${FILE_NAME}/${FRP_NAME} ${FRP_PATH}
+mkdir -p "${FRP_PATH}"
+mv "${FILE_NAME}/${FRP_NAME}" "${FRP_PATH}"
 
 # configure frpc.toml，若已存在则不覆盖
 TOML_CREATED=0
 if [ ! -f "${FRP_PATH}/${FRP_NAME}.toml" ]; then
-    RADOM_NAME=$(cat /dev/urandom | head -n 10 | md5sum | head -c 8)
-    cat >${FRP_PATH}/${FRP_NAME}.toml<<EOF
+    RANDOM_NAME=$(cat /dev/urandom | head -n 10 | md5sum | head -c 8)
+    cat >"${FRP_PATH}/${FRP_NAME}.toml" <<EOF
+# 默认 serverAddr/auth.token 指向 freefrp.net 公开发布的免费测试中转服务
+# （公开体验 token，见 https://freefrp.net/docs），仅用于快速验证连通性，
+# 生产环境请替换为你自己的 frps 地址与随机 token。
 serverAddr = "frp.freefrp.net"
 serverPort = 7000
 auth.method = "token"
 auth.token = "freefrp.net"
 
 [[proxies]]
-name = "web1_${RADOM_NAME}"
+name = "web1_${RANDOM_NAME}"
 type = "http"
 localIP = "192.168.1.2"
 localPort = 5000
 customDomains = ["nas.yourdomain.com"]
 
 [[proxies]]
-name = "web2_${RADOM_NAME}"
+name = "web2_${RANDOM_NAME}"
 type = "https"
 localIP = "192.168.1.2"
 localPort = 5001
 customDomains = ["nas.yourdomain.com"]
 
 [[proxies]]
-name = "tcp1_${RADOM_NAME}"
+name = "tcp1_${RANDOM_NAME}"
 type = "tcp"
 localIP = "192.168.1.3"
 localPort = 22
@@ -123,7 +125,7 @@ EOF
 fi
 
 # configure systemd
-cat >/lib/systemd/system/${FRP_NAME}.service <<EOF
+cat >"/lib/systemd/system/${FRP_NAME}.service" <<EOF
 [Unit]
 Description=Frp Server Service
 After=network.target syslog.target
@@ -141,17 +143,17 @@ EOF
 
 # finish install
 systemctl daemon-reload
-sudo systemctl start ${FRP_NAME}
-sudo systemctl enable ${FRP_NAME}
+systemctl start "${FRP_NAME}"
+systemctl enable "${FRP_NAME}"
 
 # clean
-rm -rf ${WORK_PATH}/${FILE_NAME}.tar.gz ${WORK_PATH}/${FILE_NAME} ${FRP_NAME}_linux_install.sh
+rm -rf "${WORK_PATH}/${FILE_NAME}.tar.gz" "${WORK_PATH}/${FILE_NAME}" "${FRP_NAME}_linux_install.sh"
 
-echo -e "${Green}====================================================================${Font}"
-echo -e "${Green}安装成功!${Font}"
+echo -e "${GREEN}====================================================================${FONT}"
+echo -e "${GREEN}安装成功!${FONT}"
 if [ "$TOML_CREATED" = "1" ]; then
-    echo -e "${Green}已生成 ${FRP_NAME}.toml，请按需修改 serverAddr、auth.token 及代理配置.${Font}"
+    echo -e "${GREEN}已生成 ${FRP_NAME}.toml，请按需修改 serverAddr、auth.token 及代理配置.${FONT}"
 fi
-echo -e "${Green}编辑配置: ${Red}vi /usr/local/frp/${FRP_NAME}.toml${Font}"
-echo -e "${Green}修改后重启: ${Red}sudo systemctl restart ${FRP_NAME}${Font}"
-echo -e "${Green}====================================================================${Font}"
+echo -e "${GREEN}编辑配置: ${RED}vi /usr/local/frp/${FRP_NAME}.toml${FONT}"
+echo -e "${GREEN}修改后重启: ${RED}sudo systemctl restart ${FRP_NAME}${FONT}"
+echo -e "${GREEN}====================================================================${FONT}"

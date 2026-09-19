@@ -1,3 +1,6 @@
+# 默认 serverAddr/auth.token 指向 freefrp.net 公开发布的免费测试中转服务
+# （公开体验 token，见 https://freefrp.net/docs），仅用于快速验证连通性，
+# 生产环境请替换为你自己的 frps 地址与随机 token。
 serverAddr = "frp.freefrp.net"
 serverPort = 7000
 auth.method = "token"
