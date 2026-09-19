@@ -172,3 +172,15 @@ wget https://ghfast.top/https://raw.githubusercontent.com/farfarfun/funfrp/maste
 - [群晖 NAS 使用 Docker 安装配置 frpc 内网穿透教程](https://www.ioiox.com/archives/26.html)
 - [群晖 NAS 安装配置免费 frp 内网穿透教程](https://www.ioiox.com/archives/6.html)
 - [新手入门 - 详解 frp 内网穿透 frpc.toml 配置](https://www.ioiox.com/archives/79.html)
+
+---
+
+## 关于 farfarfun
+
+[farfarfun](https://github.com/farfarfun) 是一个专注于实用工具库的开源组织，
+涵盖云存储、数据处理、AI、多媒体与开发工具链等方向。
+
+- 🏠 组织主页：<https://github.com/farfarfun>
+- 📧 联系：farfarfun@qq.com
+
+本项目基于 [MIT](LICENSE) 协议开源。
