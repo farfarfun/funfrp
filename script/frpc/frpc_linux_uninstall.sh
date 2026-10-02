@@ -3,16 +3,16 @@ set -euo pipefail
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-# fonts color
+# 终端颜色
 GREEN="\033[32m"
 RED="\033[31m"
 YELLOW="\033[33m"
 GREEN_BG="\033[42;37m"
 RED_BG="\033[41;37m"
 FONT="\033[0m"
-# fonts color
+# 终端颜色
 
-# variable
+# 变量
 WORK_PATH=$(dirname "$(readlink -f "$0")")
 FRP_NAME=frpc
 FRP_PATH=/usr/local/frp

@@ -2,6 +2,14 @@
 
 本项目不发布 PyPI 包，版本按日期记录，倒序排列。
 
+## 未发布
+
+### 修复
+
+- README `frps` 安装命令里的 `chmod +x frps_linux_install.sh &&sudo ./frps_linux_install.sh` 缺空格，`&&sudo` 不是合法的 shell 连接写法，已改为 `&& sudo`。
+- 删除过时且从未被任何脚本引用的静态 `script/frpc/frpc.service`：其 `ExecStart` 仍指向已废弃的 `frpc.ini`，与安装脚本实际生成、指向 `frpc.toml` 的 systemd unit 不一致，容易误导手动复用该文件的用户；安装脚本本身会在安装时正确生成指向 `.toml` 的 service 文件，无需再保留这份静态文件。
+- 把脚本里残留的英文注释（`fonts color`/`variable`/`check pkg`/`check network`/`check arch`/`download`/`configure ...`/`finish install`/`clean` 等）统一翻译为中文，与组织现有代码风格保持一致。
+
 ## 2026-09-19
 
 ### 修复

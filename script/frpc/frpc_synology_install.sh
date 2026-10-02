@@ -1,23 +1,23 @@
 #!/bin/sh
 set -eu
 
-# fonts color
+# 终端颜色
 GREEN="\033[32m"
 RED="\033[31m"
 YELLOW="\033[33m"
 GREEN_BG="\033[42;37m"
 RED_BG="\033[41;37m"
 FONT="\033[0m"
-# fonts color
+# 终端颜色
 
-# variable
+# 变量
 WORK_PATH=$(dirname "$(readlink -f "$0")")
 FRP_NAME=frpc
 FRP_VERSION=0.61.2
 FRP_PATH=/usr/local/frp
 PROXY_URL="https://ghp.ci/"
 
-# check frpc
+# 检查 frpc 是否已安装，已安装则退出
 if [ -f "/usr/local/frp/${FRP_NAME}" ] || [ -f "/usr/local/frp/${FRP_NAME}.toml" ] || [ -f "/lib/systemd/system/${FRP_NAME}.service" ]; then
     echo -e "${GREEN}=========================================================================${FONT}"
     echo -e "${RED_BG}当前已退出脚本.${FONT}"
@@ -44,11 +44,11 @@ else
     done
 fi
 
-# check network
+# 检查网络连通性
 GOOGLE_HTTP_CODE=$(curl -o /dev/null --connect-timeout 5 --max-time 8 -s --head -w "%{http_code}" "https://www.google.com" || true)
 PROXY_HTTP_CODE=$(curl -o /dev/null --connect-timeout 5 --max-time 8 -s --head -w "%{http_code}" "${PROXY_URL}" || true)
 
-# check arch
+# 检查架构
 if [ "$(uname -m)" = "x86_64" ]; then
     PLATFORM=amd64
 elif [ "$(uname -m)" = "aarch64" ]; then
@@ -59,7 +59,7 @@ fi
 
 FILE_NAME="frp_${FRP_VERSION}_linux_${PLATFORM}"
 
-# download
+# 下载
 if [ "$GOOGLE_HTTP_CODE" = "200" ]; then
     wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
 else
@@ -74,7 +74,7 @@ tar -zxvf "${FILE_NAME}.tar.gz"
 mkdir -p "${FRP_PATH}"
 mv "${FILE_NAME}/${FRP_NAME}" "${FRP_PATH}"
 
-# configure frpc.toml
+# 生成 frpc.toml 配置
 RANDOM_NAME=$(cat /dev/urandom | head -n 10 | md5sum | head -c 8)
 cat >"${FRP_PATH}/${FRP_NAME}.toml" <<EOF
 # 默认 serverAddr/auth.token 指向 freefrp.net 公开发布的免费测试中转服务
@@ -108,7 +108,7 @@ remotePort = 22222
 
 EOF
 
-# clean
+# 清理临时文件
 rm -rf "${WORK_PATH}/${FILE_NAME}.tar.gz" "${WORK_PATH}/${FILE_NAME}" "${WORK_PATH}/${FRP_NAME}_synology_install.sh"
 
 # 完成安装,手动修改frpc.toml并启动服务.

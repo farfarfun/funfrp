@@ -3,23 +3,23 @@ set -euo pipefail
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-# fonts color
+# 终端颜色
 GREEN="\033[32m"
 RED="\033[31m"
 YELLOW="\033[33m"
 GREEN_BG="\033[42;37m"
 RED_BG="\033[41;37m"
 FONT="\033[0m"
-# fonts color
+# 终端颜色
 
-# variable
+# 变量
 WORK_PATH=$(dirname "$(readlink -f "$0")")
 FRP_NAME=frpc
 FRP_VERSION=0.67.0
 FRP_PATH=/usr/local/frp
 PROXY_URL="https://ghfast.top/"
 
-# check frpc 已安装则退出（仅以二进制为准；.toml 已存在时后面不会覆盖）
+# 检查 frpc 是否已安装，已安装则退出（仅以二进制为准；.toml 已存在时后面不会覆盖）
 if [ -f "/usr/local/frp/${FRP_NAME}" ]; then
     echo -e "${GREEN}=========================================================================${FONT}"
     echo -e "${RED_BG}当前已退出脚本.${FONT}"
@@ -35,7 +35,7 @@ for pid in $(pgrep -x "${FRP_NAME}" 2>/dev/null || true); do
     kill -9 "${pid}" 2>/dev/null || true
 done
 
-# check pkg
+# 检查依赖包
 if type apt-get >/dev/null 2>&1; then
     if ! type wget >/dev/null 2>&1; then
         apt-get install wget -y
@@ -54,11 +54,11 @@ if type yum >/dev/null 2>&1; then
     fi
 fi
 
-# check network
+# 检查网络连通性
 GOOGLE_HTTP_CODE=$(curl -o /dev/null --connect-timeout 5 --max-time 8 -s --head -w "%{http_code}" "https://www.google.com" || true)
 PROXY_HTTP_CODE=$(curl -o /dev/null --connect-timeout 5 --max-time 8 -s --head -w "%{http_code}" "${PROXY_URL}" || true)
 
-# check arch
+# 检查架构
 PLATFORM=""
 case "$(uname -m)" in
     x86_64) PLATFORM=amd64 ;;
@@ -72,7 +72,7 @@ fi
 
 FILE_NAME="frp_${FRP_VERSION}_linux_${PLATFORM}"
 
-# download
+# 下载
 if [ "$GOOGLE_HTTP_CODE" = "200" ]; then
     wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
 elif [ "$PROXY_HTTP_CODE" = "200" ]; then
@@ -86,7 +86,7 @@ tar -zxvf "${FILE_NAME}.tar.gz"
 mkdir -p "${FRP_PATH}"
 mv "${FILE_NAME}/${FRP_NAME}" "${FRP_PATH}"
 
-# configure frpc.toml，若已存在则不覆盖
+# 生成 frpc.toml 配置，若已存在则不覆盖
 TOML_CREATED=0
 if [ ! -f "${FRP_PATH}/${FRP_NAME}.toml" ]; then
     RANDOM_NAME=$(cat /dev/urandom | head -n 10 | md5sum | head -c 8)
@@ -124,7 +124,7 @@ EOF
     TOML_CREATED=1
 fi
 
-# configure systemd
+# 配置 systemd 服务
 cat >"/lib/systemd/system/${FRP_NAME}.service" <<EOF
 [Unit]
 Description=Frp Server Service
@@ -141,12 +141,12 @@ ExecStart=/usr/local/frp/${FRP_NAME} -c /usr/local/frp/${FRP_NAME}.toml
 WantedBy=multi-user.target
 EOF
 
-# finish install
+# 完成安装
 systemctl daemon-reload
 systemctl start "${FRP_NAME}"
 systemctl enable "${FRP_NAME}"
 
-# clean
+# 清理临时文件
 rm -rf "${WORK_PATH}/${FILE_NAME}.tar.gz" "${WORK_PATH}/${FILE_NAME}" "${FRP_NAME}_linux_install.sh"
 
 echo -e "${GREEN}====================================================================${FONT}"
