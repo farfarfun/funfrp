@@ -19,6 +19,15 @@ FRP_VERSION=0.67.0
 FRP_PATH=/usr/local/frp
 PROXY_URL="https://ghfast.top/"
 
+# ---- 连接参数（优先级：环境变量 > 占位符）----
+# 绝不内置可用的真实 token：未显式提供时写入 CHANGE_ME_* 占位符，
+# 并在占位符未被替换前拒绝自动启动服务。
+PLACEHOLDER_ADDR="CHANGE_ME_FRPS_SERVER_ADDR"
+PLACEHOLDER_TOKEN="CHANGE_ME_FRPS_TOKEN"
+SERVER_ADDR="${FRPC_SERVER_ADDR:-$PLACEHOLDER_ADDR}"
+SERVER_PORT="${FRPC_SERVER_PORT:-7000}"
+AUTH_TOKEN="${FRPC_AUTH_TOKEN:-$PLACEHOLDER_TOKEN}"
+
 # 检查 frpc 是否已安装，已安装则退出（仅以二进制为准；.toml 已存在时后面不会覆盖）
 if [ -f "/usr/local/frp/${FRP_NAME}" ]; then
     echo -e "${GREEN}=========================================================================${FONT}"
@@ -74,30 +83,30 @@ FILE_NAME="frp_${FRP_VERSION}_linux_${PLATFORM}"
 
 # 下载
 if [ "$GOOGLE_HTTP_CODE" = "200" ]; then
-    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
+    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${WORK_PATH}/${FILE_NAME}.tar.gz"
 elif [ "$PROXY_HTTP_CODE" = "200" ]; then
-    wget -P "${WORK_PATH}" "${PROXY_URL}https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
+    wget -P "${WORK_PATH}" "${PROXY_URL}https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${WORK_PATH}/${FILE_NAME}.tar.gz"
 else
     echo -e "${RED}检测 GitHub Proxy 代理失效 开始使用官方地址下载${FONT}"
-    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
+    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${WORK_PATH}/${FILE_NAME}.tar.gz"
 fi
-tar -zxvf "${FILE_NAME}.tar.gz"
+tar -zxf "${WORK_PATH}/${FILE_NAME}.tar.gz" -C "${WORK_PATH}"
 
 mkdir -p "${FRP_PATH}"
-mv "${FILE_NAME}/${FRP_NAME}" "${FRP_PATH}"
+mv "${WORK_PATH}/${FILE_NAME}/${FRP_NAME}" "${FRP_PATH}/"
 
 # 生成 frpc.toml 配置，若已存在则不覆盖
 TOML_CREATED=0
 if [ ! -f "${FRP_PATH}/${FRP_NAME}.toml" ]; then
-    RANDOM_NAME=$(cat /dev/urandom | head -n 10 | md5sum | head -c 8)
+    RANDOM_NAME=$(head -n 10 /dev/urandom | md5sum | head -c 8)
     cat >"${FRP_PATH}/${FRP_NAME}.toml" <<EOF
-# 默认 serverAddr/auth.token 指向 freefrp.net 公开发布的免费测试中转服务
-# （公开体验 token，见 https://freefrp.net/docs），仅用于快速验证连通性，
-# 生产环境请替换为你自己的 frps 地址与随机 token。
-serverAddr = "frp.freefrp.net"
-serverPort = 7000
+# serverAddr / serverPort / auth.token 必须与你的 frps 服务端完全一致。
+# 安装时可通过环境变量 FRPC_SERVER_ADDR / FRPC_SERVER_PORT / FRPC_AUTH_TOKEN
+# 直接写入；未提供时这里留的是占位符，必须手工改完才能启动。
+serverAddr = "${SERVER_ADDR}"
+serverPort = ${SERVER_PORT}
 auth.method = "token"
-auth.token = "freefrp.net"
+auth.token = "${AUTH_TOKEN}"
 
 [[proxies]]
 name = "web1_${RANDOM_NAME}"
@@ -143,17 +152,32 @@ EOF
 
 # 完成安装
 systemctl daemon-reload
-systemctl start "${FRP_NAME}"
 systemctl enable "${FRP_NAME}"
 
+# 配置里还留着占位符就不要启动：否则 frpc 会拿着无效 token 不停重连，
+# 更重要的是避免「装完即连上某个默认服务端」这种用户没预期的行为。
+NEEDS_CONFIG=0
+if grep -q "CHANGE_ME_" "${FRP_PATH}/${FRP_NAME}.toml"; then
+    NEEDS_CONFIG=1
+else
+    systemctl start "${FRP_NAME}"
+fi
+
 # 清理临时文件
-rm -rf "${WORK_PATH}/${FILE_NAME}.tar.gz" "${WORK_PATH}/${FILE_NAME}" "${FRP_NAME}_linux_install.sh"
+rm -rf "${WORK_PATH:?}/${FILE_NAME:?}.tar.gz" "${WORK_PATH:?}/${FILE_NAME:?}"
+rm -f "${WORK_PATH}/${FRP_NAME}_linux_install.sh"
 
 echo -e "${GREEN}====================================================================${FONT}"
 echo -e "${GREEN}安装成功!${FONT}"
 if [ "$TOML_CREATED" = "1" ]; then
-    echo -e "${GREEN}已生成 ${FRP_NAME}.toml，请按需修改 serverAddr、auth.token 及代理配置.${FONT}"
+    echo -e "${GREEN}已生成 ${FRP_NAME}.toml.${FONT}"
+fi
+if [ "$NEEDS_CONFIG" = "1" ]; then
+    echo -e "${YELLOW}配置中仍有 CHANGE_ME_ 占位符，服务已注册但${FONT} ${RED}未启动${FONT}${YELLOW}.${FONT}"
+    echo -e "${YELLOW}请先填好 serverAddr / auth.token 及代理配置，再手动启动.${FONT}"
+    echo -e "${GREEN}也可在安装时直接指定: ${RED}FRPC_SERVER_ADDR=... FRPC_AUTH_TOKEN=... ./${FRP_NAME}_linux_install.sh${FONT}"
 fi
 echo -e "${GREEN}编辑配置: ${RED}vi /usr/local/frp/${FRP_NAME}.toml${FONT}"
-echo -e "${GREEN}修改后重启: ${RED}sudo systemctl restart ${FRP_NAME}${FONT}"
+echo -e "${GREEN}启动/重启: ${RED}sudo systemctl restart ${FRP_NAME}${FONT}"
+echo -e "${GREEN}查看状态: ${RED}sudo systemctl status ${FRP_NAME}${FONT}"
 echo -e "${GREEN}====================================================================${FONT}"

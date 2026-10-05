@@ -17,6 +17,21 @@ FRP_VERSION=0.67.0
 FRP_PATH=/usr/local/frp
 PROXY_URL="https://ghfast.top/"
 
+# ---- frpc 连接参数（优先级：环境变量 > 占位符）----
+# 绝不内置可用的真实 token：未显式提供时写入 CHANGE_ME_* 占位符，
+# 并在占位符未被替换前拒绝自动启动服务。
+PLACEHOLDER_ADDR="CHANGE_ME_FRPS_SERVER_ADDR"
+PLACEHOLDER_TOKEN="CHANGE_ME_FRPS_TOKEN"
+SERVER_ADDR="${FRPC_SERVER_ADDR:-$PLACEHOLDER_ADDR}"
+SERVER_PORT="${FRPC_SERVER_PORT:-7000}"
+AUTH_TOKEN="${FRPC_AUTH_TOKEN:-$PLACEHOLDER_TOKEN}"
+
+# ---- frps 端口与监听地址（集中配置，全脚本复用）----
+FRPS_BIND_PORT=7000
+FRPS_DASHBOARD_PORT=7500
+# dashboard 默认只监听回环，需要公网访问时显式设成 0.0.0.0
+FRPS_DASHBOARD_ADDR="${FRPS_DASHBOARD_ADDR:-127.0.0.1}"
+
 # 选择组件
 echo -e "${GREEN}========================================${FONT}"
 echo -e "${GREEN}  frp 一键管理脚本${FONT}"
@@ -140,13 +155,13 @@ do_install() {
         local random_name
         random_name=$(head -n 10 /dev/urandom | md5sum | head -c 8)
         cat >"${FRP_PATH}/${FRP_NAME}.toml" <<EOF
-# 默认 serverAddr/auth.token 指向 freefrp.net 公开发布的免费测试中转服务
-# （公开体验 token，见 https://freefrp.net/docs），仅用于快速验证连通性，
-# 生产环境请替换为你自己的 frps 地址与随机 token。
-serverAddr = "frp.freefrp.net"
-serverPort = 7000
+# serverAddr / serverPort / auth.token 必须与你的 frps 服务端完全一致。
+# 安装时可通过环境变量 FRPC_SERVER_ADDR / FRPC_SERVER_PORT / FRPC_AUTH_TOKEN
+# 直接写入；未提供时这里留的是占位符，必须手工改完才能启动。
+serverAddr = "${SERVER_ADDR}"
+serverPort = ${SERVER_PORT}
 auth.method = "token"
-auth.token = "freefrp.net"
+auth.token = "${AUTH_TOKEN}"
 
 [[proxies]]
 name = "web1_${random_name}"
@@ -175,14 +190,18 @@ EOF
         random_token=$(head -n 10 /dev/urandom | md5sum | head -c 16)
         random_dash_pass=$(head -n 10 /dev/urandom | md5sum | head -c 12)
         cat >"${FRP_PATH}/${FRP_NAME}.toml" <<EOF
-bindPort = 7000
+bindPort = ${FRPS_BIND_PORT}
 auth.method = "token"
 auth.token = "${random_token}"
 
+# 如需 HTTP/HTTPS 域名代理可取消下面注释并修改端口
 # vhostHTTPPort = 80
 # vhostHTTPSPort = 443
-webServer.addr = "0.0.0.0"
-webServer.port = 7500
+
+# dashboard 默认只监听回环，避免把管理界面直接暴露到公网；
+# 确需公网访问时改成 0.0.0.0 并务必配好防火墙。
+webServer.addr = "${FRPS_DASHBOARD_ADDR}"
+webServer.port = ${FRPS_DASHBOARD_PORT}
 webServer.user = "admin"
 webServer.password = "${random_dash_pass}"
 
@@ -194,8 +213,16 @@ EOF
     write_systemd_service
     systemctl daemon-reload
     systemctl enable "${FRP_NAME}"
-    systemctl start "${FRP_NAME}"
-    rm -rf "${WORK_PATH}/${file_name}.tar.gz" "${WORK_PATH}/${file_name}"
+    # 配置里还留着占位符就不要启动：既避免 frpc 拿着无效 token 不停重连，
+    # 也避免「装完即连上某个默认服务端」这种用户没预期的行为。
+    if grep -q "CHANGE_ME_" "${FRP_PATH}/${FRP_NAME}.toml"; then
+        echo -e "${YELLOW}配置中仍有 CHANGE_ME_ 占位符，服务已注册但${FONT} ${RED}未启动${FONT}${YELLOW}.${FONT}"
+        echo -e "${YELLOW}请先填好 serverAddr / auth.token，或安装时指定:${FONT}"
+        echo -e "${RED}FRPC_SERVER_ADDR=... FRPC_AUTH_TOKEN=... ./frp_manager.sh${FONT}"
+    else
+        systemctl start "${FRP_NAME}"
+    fi
+    rm -rf "${WORK_PATH:?}/${file_name:?}.tar.gz" "${WORK_PATH:?}/${file_name:?}"
     echo -e "${GREEN}安装完成 (已覆盖配置). 编辑: vi ${FRP_PATH}/${FRP_NAME}.toml  重启: systemctl restart ${FRP_NAME}${FONT}"
 }
 
@@ -216,7 +243,7 @@ do_update() {
     download_frp "$file_name"
     tar -zxf "${WORK_PATH}/${file_name}.tar.gz" -C "${WORK_PATH}"
     mv "${WORK_PATH}/${file_name}/${FRP_NAME}" "${FRP_PATH}/"
-    rm -rf "${WORK_PATH}/${file_name}.tar.gz" "${WORK_PATH}/${file_name}"
+    rm -rf "${WORK_PATH:?}/${file_name:?}.tar.gz" "${WORK_PATH:?}/${file_name:?}"
     systemctl restart "${FRP_NAME}"
     echo -e "${GREEN}更新完成，配置未改动. 已重启 ${FRP_NAME}.${FONT}"
 }

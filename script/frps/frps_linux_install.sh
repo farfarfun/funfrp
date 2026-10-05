@@ -19,6 +19,12 @@ FRP_VERSION=0.67.0
 FRP_PATH=/usr/local/frp
 PROXY_URL="https://ghfast.top/"
 
+# ---- 端口与监听地址（集中配置，全脚本复用）----
+BIND_PORT=7000
+DASHBOARD_PORT=7500
+# dashboard 默认只监听回环，需要公网访问时显式设成 0.0.0.0
+DASHBOARD_ADDR="${FRPS_DASHBOARD_ADDR:-127.0.0.1}"
+
 # 检查 frps 是否已安装，已安装则退出（仅以二进制为准；.toml 已存在时后面不会覆盖）
 if [ -f "/usr/local/frp/${FRP_NAME}" ]; then
     echo -e "${GREEN}=========================================================================${FONT}"
@@ -74,25 +80,25 @@ FILE_NAME="frp_${FRP_VERSION}_linux_${PLATFORM}"
 
 # 下载
 if [ "$GOOGLE_HTTP_CODE" = "200" ]; then
-    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
+    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${WORK_PATH}/${FILE_NAME}.tar.gz"
 elif [ "$PROXY_HTTP_CODE" = "200" ]; then
-    wget -P "${WORK_PATH}" "${PROXY_URL}https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
+    wget -P "${WORK_PATH}" "${PROXY_URL}https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${WORK_PATH}/${FILE_NAME}.tar.gz"
 else
     echo -e "${RED}检测 GitHub Proxy 代理失效 开始使用官方地址下载${FONT}"
-    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
+    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${WORK_PATH}/${FILE_NAME}.tar.gz"
 fi
-tar -zxvf "${FILE_NAME}.tar.gz"
+tar -zxf "${WORK_PATH}/${FILE_NAME}.tar.gz" -C "${WORK_PATH}"
 
 mkdir -p "${FRP_PATH}"
-mv "${FILE_NAME}/${FRP_NAME}" "${FRP_PATH}"
+mv "${WORK_PATH}/${FILE_NAME}/${FRP_NAME}" "${FRP_PATH}/"
 
 # 生成 frps.toml 配置（服务端），若已存在则不覆盖
 TOML_CREATED=0
 if [ ! -f "${FRP_PATH}/${FRP_NAME}.toml" ]; then
-    RANDOM_TOKEN=$(cat /dev/urandom | head -n 10 | md5sum | head -c 16)
-    RANDOM_DASH_PASS=$(cat /dev/urandom | head -n 10 | md5sum | head -c 12)
+    RANDOM_TOKEN=$(head -n 10 /dev/urandom | md5sum | head -c 16)
+    RANDOM_DASH_PASS=$(head -n 10 /dev/urandom | md5sum | head -c 12)
     cat >"${FRP_PATH}/${FRP_NAME}.toml" <<EOF
-bindPort = 7000
+bindPort = ${BIND_PORT}
 auth.method = "token"
 auth.token = "${RANDOM_TOKEN}"
 
@@ -100,9 +106,10 @@ auth.token = "${RANDOM_TOKEN}"
 # vhostHTTPPort = 80
 # vhostHTTPSPort = 443
 
-# 默认为 127.0.0.1，如果需要公网访问，需要修改为 0.0.0.0。
-webServer.addr = "0.0.0.0"
-webServer.port = 7500
+# dashboard 默认只监听回环，避免把管理界面直接暴露到公网；
+# 确需公网访问时改成 0.0.0.0 并务必配好防火墙。
+webServer.addr = "${DASHBOARD_ADDR}"
+webServer.port = ${DASHBOARD_PORT}
 # dashboard 用户名密码，随机生成，可按需修改
 webServer.user = "admin"
 webServer.password = "${RANDOM_DASH_PASS}"
@@ -134,7 +141,8 @@ systemctl start "${FRP_NAME}"
 systemctl enable "${FRP_NAME}"
 
 # 清理临时文件
-rm -rf "${WORK_PATH}/${FILE_NAME}.tar.gz" "${WORK_PATH}/${FILE_NAME}" "${FRP_NAME}_linux_install.sh"
+rm -rf "${WORK_PATH:?}/${FILE_NAME:?}.tar.gz" "${WORK_PATH:?}/${FILE_NAME:?}"
+rm -f "${WORK_PATH}/${FRP_NAME}_linux_install.sh"
 
 echo -e "${GREEN}====================================================================${FONT}"
 echo -e "${GREEN}安装成功!${FONT}"
