@@ -21,6 +21,7 @@
 
 ### 变更
 
+- README 的「更新」小节（含 2024-03-03 这类历史条目）改为「兼容性」，只描述当前状态（frp 版本、支持架构、群晖机型适配），历史变更指向 CHANGELOG.md；frps 安装/卸载的国内镜像命令补上与官方源一致的 `sudo`。
 - README 补齐群晖一键脚本的完整安装/卸载命令、安装后各文件路径表、`start`/`run`/`stop`/`restart`/`status` 用法与开机自启说明，不再只给一条外部教程链接；新增「配置与凭据」章节说明占位符与环境变量用法；frps 章节补充 dashboard 的地址/端口/账号说明；卸载语义的描述与脚本实际行为对齐。
 
 - README `frps` 安装命令里的 `chmod +x frps_linux_install.sh &&sudo ./frps_linux_install.sh` 缺空格，`&&sudo` 不是合法的 shell 连接写法，已改为 `&& sudo`。

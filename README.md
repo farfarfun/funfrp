@@ -62,11 +62,12 @@ sudo cat /usr/local/frp/frps.toml
 > （[freefrp.net](https://freefrp.net/docs) 公开发布的免费测试中转）。那是所有人共用的公开 token，
 > 流量会经过第三方服务器，不要用于生产或涉及隐私的场景。
 
-## 更新
+## 兼容性
 
-- **2024-03-03** 更新到新版本，支持 toml 配置文件
-- Linux 一键脚本同时支持 X86 和 ARM 架构
-- 目前 X86 群晖 DMS 7.0 可直接使用 Linux 版本脚本，ARM 版请自行尝试
+- 安装的 frp 版本：**v0.67.0**，配置格式为 `toml`
+- 支持架构：x86_64(amd64)、aarch64(arm64)、armv7(arm)
+- X86 群晖 DSM 7.0 可直接用 Linux 版脚本（有 systemd）；ARM 机型请用群晖版脚本
+- 历史变更见 [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
@@ -182,7 +183,7 @@ wget https://ghfast.top/https://raw.githubusercontent.com/farfarfun/funfrp/maste
 git clone https://github.com/farfarfun/funfrp
 # 国内镜像
 git clone https://ghfast.top/https://github.com/farfarfun/funfrp
-# 配置 frpc.toml（可复制 script/frpc/frpc.toml 到指定目录后修改）
+# 配置 frpc.toml（可复制 script/frpc/frpc.toml 到指定目录，把 CHANGE_ME_* 占位符改掉）
 vi /root/frpc/frpc.toml
 ```
 
@@ -216,7 +217,7 @@ docker restart frpc
 ```shell
 wget https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_install.sh -O frps_linux_install.sh && chmod +x frps_linux_install.sh && sudo ./frps_linux_install.sh
 # 国内镜像
-wget https://ghfast.top/https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_install.sh -O frps_linux_install.sh && chmod +x frps_linux_install.sh && ./frps_linux_install.sh
+wget https://ghfast.top/https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_install.sh -O frps_linux_install.sh && chmod +x frps_linux_install.sh && sudo ./frps_linux_install.sh
 ```
 
 安装完成后会生成 `frps.toml` 并注册 systemd 服务 **frps**：
@@ -242,7 +243,7 @@ sudo systemctl restart frps
 ```shell
 wget https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_uninstall.sh -O frps_linux_uninstall.sh && chmod +x frps_linux_uninstall.sh && sudo ./frps_linux_uninstall.sh
 # 国内镜像
-wget https://ghfast.top/https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_uninstall.sh -O frps_linux_uninstall.sh && chmod +x frps_linux_uninstall.sh && ./frps_linux_uninstall.sh
+wget https://ghfast.top/https://raw.githubusercontent.com/farfarfun/funfrp/master/script/frps/frps_linux_uninstall.sh -O frps_linux_uninstall.sh && chmod +x frps_linux_uninstall.sh && sudo ./frps_linux_uninstall.sh
 ```
 
 卸载只删除 `frps` 自己的程序、`frps.toml` 与 `frps.service`，`/usr/local/frp` 为空时才删除目录，不会影响同机安装的 frpc。
