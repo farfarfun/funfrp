@@ -13,21 +13,33 @@ FONT="\033[0m"
 # 变量
 WORK_PATH=$(dirname "$(readlink -f "$0")")
 FRP_NAME=frpc
-FRP_VERSION=0.61.2
+FRP_VERSION=0.67.0
 FRP_PATH=/usr/local/frp
-PROXY_URL="https://ghp.ci/"
+RUN_DIR="${FRP_PATH}/.run"
+SERVICE_SCRIPT="${FRP_PATH}/${FRP_NAME}_service.sh"
+PROXY_URL="https://ghfast.top/"
+RAW_BASE="https://raw.githubusercontent.com/farfarfun/funfrp/master"
+
+# ---- 连接参数（优先级：环境变量 > 占位符）----
+# 绝不内置可用的真实 token：未显式提供时写入 CHANGE_ME_* 占位符，
+# 必须手工改完才能启动。
+PLACEHOLDER_ADDR="CHANGE_ME_FRPS_SERVER_ADDR"
+PLACEHOLDER_TOKEN="CHANGE_ME_FRPS_TOKEN"
+SERVER_ADDR="${FRPC_SERVER_ADDR:-$PLACEHOLDER_ADDR}"
+SERVER_PORT="${FRPC_SERVER_PORT:-7000}"
+AUTH_TOKEN="${FRPC_AUTH_TOKEN:-$PLACEHOLDER_TOKEN}"
 
 # 检查 frpc 是否已安装，已安装则退出
 if [ -f "/usr/local/frp/${FRP_NAME}" ] || [ -f "/usr/local/frp/${FRP_NAME}.toml" ] || [ -f "/lib/systemd/system/${FRP_NAME}.service" ]; then
-    echo -e "${GREEN}=========================================================================${FONT}"
-    echo -e "${RED_BG}当前已退出脚本.${FONT}"
-    echo -e "${GREEN}检查到服务器已安装${FONT} ${RED}${FRP_NAME}${FONT}"
-    echo -e "${GREEN}请手动确认和删除${FONT} ${RED}/usr/local/frp/${FONT} ${GREEN}目录下的${FONT} ${RED}${FRP_NAME}${FONT} ${GREEN}和${FONT} ${RED}/${FRP_NAME}.toml${FONT} ${GREEN}文件以及${FONT} ${RED}/lib/systemd/system/${FRP_NAME}.service${FONT} ${GREEN}文件,再次执行本脚本.${FONT}"
-    echo -e "${GREEN}参考命令如下:${FONT}"
-    echo -e "${RED}rm -rf /usr/local/frp/${FRP_NAME}${FONT}"
-    echo -e "${RED}rm -rf /usr/local/frp/${FRP_NAME}.toml${FONT}"
-    echo -e "${RED}rm -rf /lib/systemd/system/${FRP_NAME}.service${FONT}"
-    echo -e "${GREEN}=========================================================================${FONT}"
+    printf '%b\n' "${GREEN}=========================================================================${FONT}"
+    printf '%b\n' "${RED_BG}当前已退出脚本.${FONT}"
+    printf '%b\n' "${GREEN}检查到服务器已安装${FONT} ${RED}${FRP_NAME}${FONT}"
+    printf '%b\n' "${GREEN}请手动确认和删除${FONT} ${RED}/usr/local/frp/${FONT} ${GREEN}目录下的${FONT} ${RED}${FRP_NAME}${FONT} ${GREEN}和${FONT} ${RED}/${FRP_NAME}.toml${FONT} ${GREEN}文件以及${FONT} ${RED}/lib/systemd/system/${FRP_NAME}.service${FONT} ${GREEN}文件,再次执行本脚本.${FONT}"
+    printf '%b\n' "${GREEN}参考命令如下:${FONT}"
+    printf '%b\n' "${RED}rm -rf /usr/local/frp/${FRP_NAME}${FONT}"
+    printf '%b\n' "${RED}rm -rf /usr/local/frp/${FRP_NAME}.toml${FONT}"
+    printf '%b\n' "${RED}rm -rf /lib/systemd/system/${FRP_NAME}.service${FONT}"
+    printf '%b\n' "${GREEN}=========================================================================${FONT}"
     exit 0
 fi
 
@@ -61,29 +73,29 @@ FILE_NAME="frp_${FRP_VERSION}_linux_${PLATFORM}"
 
 # 下载
 if [ "$GOOGLE_HTTP_CODE" = "200" ]; then
-    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
+    wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${WORK_PATH}/${FILE_NAME}.tar.gz"
 else
     if [ "$PROXY_HTTP_CODE" = "200" ]; then
-        wget -P "${WORK_PATH}" "${PROXY_URL}https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
+        wget -P "${WORK_PATH}" "${PROXY_URL}https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${WORK_PATH}/${FILE_NAME}.tar.gz"
     else
-        echo -e "${RED}检测 GitHub Proxy 代理失效 开始使用官方下载地址下载${FONT}"
-        wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${FILE_NAME}.tar.gz"
+        printf '%b\n' "${RED}检测 GitHub Proxy 代理失效 开始使用官方下载地址下载${FONT}"
+        wget -P "${WORK_PATH}" "https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FILE_NAME}.tar.gz" -O "${WORK_PATH}/${FILE_NAME}.tar.gz"
     fi
 fi
-tar -zxvf "${FILE_NAME}.tar.gz"
+tar -zxf "${WORK_PATH}/${FILE_NAME}.tar.gz" -C "${WORK_PATH}"
 mkdir -p "${FRP_PATH}"
-mv "${FILE_NAME}/${FRP_NAME}" "${FRP_PATH}"
+mv "${WORK_PATH}/${FILE_NAME}/${FRP_NAME}" "${FRP_PATH}/"
 
 # 生成 frpc.toml 配置
-RANDOM_NAME=$(cat /dev/urandom | head -n 10 | md5sum | head -c 8)
+RANDOM_NAME=$(head -n 10 /dev/urandom | md5sum | head -c 8)
 cat >"${FRP_PATH}/${FRP_NAME}.toml" <<EOF
-# 默认 serverAddr/auth.token 指向 freefrp.net 公开发布的免费测试中转服务
-# （公开体验 token，见 https://freefrp.net/docs），仅用于快速验证连通性，
-# 生产环境请替换为你自己的 frps 地址与随机 token。
-serverAddr = "frp.freefrp.net"
-serverPort = 7000
+# serverAddr / serverPort / auth.token 必须与你的 frps 服务端完全一致。
+# 安装时可通过环境变量 FRPC_SERVER_ADDR / FRPC_SERVER_PORT / FRPC_AUTH_TOKEN
+# 直接写入；未提供时这里留的是占位符，必须手工改完才能启动。
+serverAddr = "${SERVER_ADDR}"
+serverPort = ${SERVER_PORT}
 auth.method = "token"
-auth.token = "freefrp.net"
+auth.token = "${AUTH_TOKEN}"
 
 [[proxies]]
 name = "web1_${RANDOM_NAME}"
@@ -108,13 +120,30 @@ remotePort = 22222
 
 EOF
 
+# 安装生命周期管理脚本（群晖 DSM 没有 systemd，用它提供 start/run/stop/restart/status）
+mkdir -p "${RUN_DIR}"
+if [ -f "${WORK_PATH}/${FRP_NAME}_synology_service.sh" ]; then
+    cp "${WORK_PATH}/${FRP_NAME}_synology_service.sh" "${SERVICE_SCRIPT}"
+elif [ "$GOOGLE_HTTP_CODE" = "200" ]; then
+    wget "${RAW_BASE}/script/frpc/${FRP_NAME}_synology_service.sh" -O "${SERVICE_SCRIPT}"
+else
+    wget "${PROXY_URL}${RAW_BASE}/script/frpc/${FRP_NAME}_synology_service.sh" -O "${SERVICE_SCRIPT}"
+fi
+chmod +x "${SERVICE_SCRIPT}"
+
 # 清理临时文件
-rm -rf "${WORK_PATH}/${FILE_NAME}.tar.gz" "${WORK_PATH}/${FILE_NAME}" "${WORK_PATH}/${FRP_NAME}_synology_install.sh"
+rm -rf "${WORK_PATH:?}/${FILE_NAME:?}.tar.gz" "${WORK_PATH:?}/${FILE_NAME:?}"
+rm -f "${WORK_PATH}/${FRP_NAME}_synology_install.sh"
 
 # 完成安装,手动修改frpc.toml并启动服务.
-echo -e "${GREEN}=======================================================================${FONT}"
-echo -e "${GREEN}安装成功,请先修改 frpc.toml 文件,确保格式及配置正确无误!${FONT}"
-echo -e "${RED}vi /usr/local/frp/frpc.toml${FONT}"
-echo -e "${GREEN}修改完毕后执行以下命令启动服务并保持后台运行:${FONT}"
-echo -e "${RED}nohup /usr/local/frp/frpc -c /usr/local/frp/frpc.toml >/dev/null 2>&1 &${FONT}"
-echo -e "${GREEN}=======================================================================${FONT}"
+printf '%b\n' "${GREEN}=======================================================================${FONT}"
+printf '%b\n' "${GREEN}安装成功. 配置中的 CHANGE_ME_ 占位符必须先改掉才能启动:${FONT}"
+printf '%b\n' "${RED}vi ${FRP_PATH}/${FRP_NAME}.toml${FONT}"
+printf '%b\n' "${GREEN}改完后用服务脚本管理（PID 与日志在 ${RUN_DIR}/）:${FONT}"
+printf '%b\n' "${RED}${SERVICE_SCRIPT} start${FONT}    ${GREEN}# 后台启动${FONT}"
+printf '%b\n' "${RED}${SERVICE_SCRIPT} run${FONT}      ${GREEN}# 前台运行，便于排查${FONT}"
+printf '%b\n' "${RED}${SERVICE_SCRIPT} status${FONT}   ${GREEN}# 查看状态${FONT}"
+printf '%b\n' "${RED}${SERVICE_SCRIPT} restart${FONT}  ${GREEN}# 重启${FONT}"
+printf '%b\n' "${RED}${SERVICE_SCRIPT} stop${FONT}     ${GREEN}# 停止${FONT}"
+printf '%b\n' "${GREEN}安装时也可直接指定: FRPC_SERVER_ADDR=... FRPC_AUTH_TOKEN=... ./${FRP_NAME}_synology_install.sh${FONT}"
+printf '%b\n' "${GREEN}=======================================================================${FONT}"
