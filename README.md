@@ -183,7 +183,10 @@ wget https://ghfast.top/https://raw.githubusercontent.com/farfarfun/funfrp/maste
 git clone https://github.com/farfarfun/funfrp
 # 国内镜像
 git clone https://ghfast.top/https://github.com/farfarfun/funfrp
-# 配置 frpc.toml（可复制 script/frpc/frpc.toml 到指定目录，把 CHANGE_ME_* 占位符改掉）
+
+# 把示例配置复制到待挂载目录，再改掉 CHANGE_ME_* 占位符（serverAddr / auth.token）
+mkdir -p /root/frpc
+cp funfrp/script/frpc/frpc.toml /root/frpc/frpc.toml
 vi /root/frpc/frpc.toml
 ```
 
