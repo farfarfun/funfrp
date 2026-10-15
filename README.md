@@ -1,7 +1,5 @@
 # funfrp
 
-## 项目简介
-
 基于 [fatedier/frp](https://github.com/fatedier/frp) 原版 frp 的一键安装卸载脚本，支持 **frpc（客户端）** 与 **frps（服务端）**。支持群晖 NAS、Linux 服务器等多种环境安装部署。
 
 - GitHub [farfarfun/funfrp](https://github.com/farfarfun/funfrp)
